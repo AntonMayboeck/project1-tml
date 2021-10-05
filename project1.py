@@ -14,30 +14,36 @@ from sklearn.ensemble import GradientBoostingClassifier
 import time
 
 wine = pd.read_csv("winequality-white.csv")
-#remove density because the correlation between density and residual sugar is high and there is less correlation between density and quality, my classifier, then residual sugar and quality
 
 plt.figure(figsize = (16, 7))
 
+# Finding the correlation between the colunms in the dataset
 sns.heatmap(wine.corr(), annot = True, fmt = '0.2g', linewidths = 1)
 
 grid_dict = {}
 acc_dict = {}
 
+# Dropping residual sugar
 wine = wine.drop('residual sugar', axis=1)
+# Assigning X to data and y to target
 y = wine['quality']
 X = wine.drop('quality', axis=1)
 
+# Splitting the data into training and test set with a 3:1 ratio
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.25, stratify = y, random_state = 42)  
 
+# Normalizing the data
+std = StandardScaler()
+X_train = std.fit_transform(X_train)
+X_test = std.transform(X_test)
 
-minmax = StandardScaler()
-X_train = minmax.fit_transform(X_train)
-X_test = minmax.transform(X_test)
-
-
+# K Nearest Neighbour Classifier
 start_time = time.time()
 knn = KNeighborsClassifier()
 knn.fit(X_train, y_train)
+# Accuaracy for pre GridSearchCV classifier
+knn_acc1 = accuracy_score(y_test, knn.predict(X_test))
+# Parameters for GridSearchCV
 param_grid = {'n_neighbors': [1, 2, 5, 10, 20],
               'algorithm': ['auto', 'ball_tree', 'kd_tree', 'brute'],
               'weights' : ['uniform', 'distance']
@@ -46,37 +52,43 @@ param_grid = {'n_neighbors': [1, 2, 5, 10, 20],
 grid = GridSearchCV(knn, param_grid, refit = True, verbose = 3,n_jobs=-1) 
 grid.fit(X_train, y_train) 
 grid_predictions = grid.predict(X_test)
-knn_acc1 = accuracy_score(y_test, knn.predict(X_test))
-knn2 = KNeighborsClassifier(algorithm="auto", n_neighbors=1)
+knn2 = KNeighborsClassifier(n_neighbors=grid.best_estimator_.n_neighbors, algorithm=grid.best_estimator_.algorithm, weights=grid.best_estimator_.weights)
 knn2.fit(X_train, y_train)
+# Accuaracy for pre GridSearchCV classifier
 knn_acc2 = accuracy_score(y_test, knn2.predict(X_test))
 grid_dict["knn_acc"] = grid.best_params_
+# Inserting both accuaracy scores for comparison
 acc_dict["KNN"] = [knn_acc1, knn_acc2]
-plt.grid_search(grid.cv_results_, change='n_neighbours', kind='line')
 
-
+# SupportVector Classifier/SupportVector Machine
 start_time = time.time()
 svc = SVC()
 svc.fit(X_train, y_train)
-param_grid = {'C': [0.1, 1, 10, 100, 1000],  
-              'gamma': [100, 10, 1, 0.1, 0.01], 
-              'kernel': ['linear', 'rbf', 'sigmoid', 'poly']}  
+# Accuaracy for pre GridSearchCV classifier
+svc_acc1 = accuracy_score(y_test, svc.predict(X_test))
+# Parameters for GridSearchCV
+param_grid = {'C': [0.1, 1, 10, 80, 100],  
+              'gamma': ['scale', 'auto'], 
+              'kernel': ['linear', 'rbf', 'sigmoid']}  
    
 grid = GridSearchCV(svc, param_grid, refit = True, verbose = 3,n_jobs=-1) 
 grid.fit(X_train, y_train) 
 grid_predictions = grid.predict(X_test) 
-svc_acc1 = accuracy_score(y_test, svc.predict(X_test))
 svc2 = SVC(C=100, gamma='scale', kernel='rbf')
 svc2.fit(X_train, y_train)
+# Accuaracy for post GridSearchCV classifier
 svc_acc2 = accuracy_score(y_test, svc2.predict(X_test))
 grid_dict["svc_acc"] = grid.best_params_
+# Inserting both accuaracy scores for comparison
 acc_dict["SVC"] = [svc_acc1, svc_acc2]
-plt.grid_search(grid.cv_results_, change='kernel', kind='line')
 
-
+# DecisionTree Classifier
 start_time = time.time()
 dt = DecisionTreeClassifier()
 dt.fit(X_train, y_train)
+# Accuaracy for pre GridSearchCV classifier
+dt_acc1 = accuracy_score(y_test, dt.predict(X_test))
+# Parameters for GridSearchCV
 param_grid = {'criterion': ['gini', 'entropy'],   
               'splitter': ['best', 'random'], 
               'max_depth':[4, 5, 7, 9, 10, 11, None]}  
@@ -84,18 +96,21 @@ param_grid = {'criterion': ['gini', 'entropy'],
 grid = GridSearchCV(dt, param_grid, refit = True, verbose = 3,n_jobs=-1) 
 grid.fit(X_train, y_train) 
 grid_predictions = grid.predict(X_test)
-dt_acc1 = accuracy_score(y_test, dt.predict(X_test))
-dt2 = DecisionTreeClassifier(criterion='gini', max_depth=9, splitter='random')
+dt2 = DecisionTreeClassifier(criterion=grid.best_estimator_.criterion, splitter=grid.best_estimator_.splitter, max_depth=grid.best_estimator_.max_depth)
 dt2.fit(X_train, y_train)
+# Accuaracy for post GridSearchCV classifier
 dt_acc2 = accuracy_score(y_test, dt2.predict(X_test))
 grid_dict["dtc_acc"] = grid.best_params_
+# Inserting both accuaracy scores for comparison
 acc_dict["DT"] = [dt_acc1, dt_acc2]
-plt.grid_search(grid.cv_results_, change='max_depth', kind='line')
 
-
+# RandomForrest Classifier
 start_time = time.time()
 rf1 = RandomForestClassifier()
 rf1.fit(X_train, y_train)
+# Accuaracy for pre GridSearchCV classifier
+rf_acc1 = accuracy_score(y_test, rf1.predict(X_test))
+# Parameters for GridSearchCV
 param_grid = {'n_estimators': [70, 80, 100, 130, 150],  
               'criterion': ['gini','entropy'], 
               'max_depth':[4, 5, 7, 9, 10, 11, None]}  
@@ -103,38 +118,44 @@ param_grid = {'n_estimators': [70, 80, 100, 130, 150],
 grid = GridSearchCV(rf1, param_grid, refit = True, verbose = 3,n_jobs=-1) 
 grid.fit(X_train, y_train) 
 grid_predictions = grid.predict(X_test) 
-rf_acc1 = accuracy_score(y_test, rf1.predict(X_test))
-rf2 = RandomForestClassifier(criterion='entropy', max_depth=9, n_estimators=80)
+rf2 = RandomForestClassifier(criterion=grid.best_estimator_.criterion, n_estimators=grid.best_estimator_.n_estimators, max_depth=grid.best_estimator_.max_depth)
 rf2.fit(X_train, y_train)
+# Accuaracy for post GridSearchCV classifier
 rf_acc2 = accuracy_score(y_test, rf2.predict(X_test))
 grid_dict["rf_acc"] = grid.best_params_
+# Inserting both accuaracy scores for comparison
 acc_dict["RF"] = [rf_acc1, rf_acc2]
-plt.grid_search(grid.cv_results_, change='max_depth', kind='line')
 
 
-
+# AdaBoost Classifier
 start_time = time.time()
 ada1 = AdaBoostClassifier(base_estimator = dt)
 ada1.fit(X_train, y_train)
+# Accuaracy for pre GridSearchCV classifier
+ada_acc1 = accuracy_score(y_test, ada1.predict(X_test))
+# Parameters for GridSearchCV
 grid_param = {'n_estimators' : [40, 50, 60, 65, 70, 80, 100],
              'learning_rate' : [0.01, 0.1, 0.05, 0.5, 1, 10],
              'algorithm' : ['SAMME', 'SAMME.R']
 }
 grid = GridSearchCV(ada1, grid_param,  refit = True, verbose = 3,n_jobs=-1)
 grid.fit(X_train, y_train)
-ada_acc1 = accuracy_score(y_test, ada1.predict(X_test))
-ada2 = AdaBoostClassifier(base_estimator = dt, algorithm='SAMMER.R', learning_rate=0.05, n_estimators=70)
+ada2 = AdaBoostClassifier(base_estimator=rf2, n_estimators=grid.best_estimator_.n_estimators, learning_rate=grid.best_estimator_.learning_rate, algorithm=grid.best_estimator_.algorithm)
 ada2.fit(X_train, y_train)
+# Accuaracy for post GridSearchCV classifier
 ada_acc2 = accuracy_score(y_test, ada2.predict(X_test))
 grid_dict["ada_acc"] = grid.best_params_
+# Inserting both accuaracy scores for comparison
 acc_dict["ADA"] = [ada_acc1, ada_acc2]
-plt.grid_search(grid.cv_results_, change='n_estimators', kind='line')
 
 
-
+# GradientBoost Classifier
 start_time = time.time()
 gb = GradientBoostingClassifier()
 gb.fit(X_train, y_train)
+# Accuaracy for pre GridSearchCV classifier
+gb_acc = accuracy_score(y_test, gb.predict(X_test))
+# Parameters for GridSearchCV
 param_grid = {'loss': ['deviance', 'exponential'],  
               'learning_rate': [0.01, 0.2, 0.3, 0.1, 0.05, 0.5, 1], 
               'n_estimators':[100, 200, 220, 230, 240, 250],
@@ -142,14 +163,14 @@ param_grid = {'loss': ['deviance', 'exponential'],
    
 grid = GridSearchCV(gb, param_grid, refit = True, verbose = 3,n_jobs=-1) 
 grid.fit(X_train, y_train) 
-grid_predictions = grid.predict(X_test) 
-gb_acc = accuracy_score(y_test, gb.predict(X_test))
-gb2 = GradientBoostingClassifier(learning_rate=0.01, loss='deviance', n_estimators=200)
+grid_predictions = grid.predict(X_test)
+gb2 = GradientBoostingClassifier(n_estimators=grid.best_estimator_.n_estimators, learning_rate=grid.best_estimator_.learning_rate, loss=grid.best_estimator_.loss, max_features=grid.best_estimator_.max_features)
 gb2.fit(X_train, y_train)
+# Accuaracy for post GridSearchCV classifier
 gb_acc2 = accuracy_score(y_test, gb2.predict(X_test))
 grid_dict["gb_acc"] = grid.best_params_
+# Inserting both accuaracy scores for comparison
 acc_dict["GD"] = [gb_acc, gb_acc2]
-plt.grid_search(grid.cv_results_, change='n_estimators', kind='line')
 
 
 
@@ -159,6 +180,7 @@ print(grid_dict)
 print("-----------BEFORE AND AFTER ACCUARACY-----------")
 print(acc_dict)
 
+#Creating two dataframes pre and post GridSearchCV hyper-parameter search
 models_pre = pd.DataFrame({
     'Model' : ['KNN', 'SVC', 'Decision Tree', 'Random Forest','Ada Boost','Gradient Boosting'],
     'Score' : [knn_acc1, svc_acc1, dt_acc1, rf_acc1, ada_acc1, gb_acc]
@@ -169,9 +191,11 @@ models_post =  pd.DataFrame({
     'Score' : [knn_acc2, svc_acc2, dt_acc2, rf_acc2, ada_acc2, gb_acc2]
 })
 
+# Accuaracy without hyper-parameters
 plt.figure(figsize = (20, 8))
 sns.lineplot(x = 'Model', y = 'Score', data = models_pre)
 
+# Accuaracy using best hyper-parameters from GridSearchCV
 plt.figure(figsize = (20, 8))
 sns.lineplot(x = 'Model', y = 'Score', data = models_post)
 plt.show()
