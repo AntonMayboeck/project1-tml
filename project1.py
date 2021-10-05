@@ -67,14 +67,14 @@ svc.fit(X_train, y_train)
 # Accuaracy for pre GridSearchCV classifier
 svc_acc1 = accuracy_score(y_test, svc.predict(X_test))
 # Parameters for GridSearchCV
-param_grid = {'C': [0.1, 1, 10, 80, 100],  
+param_grid = {'C': [0.1, 1, 10, 100],  
               'gamma': ['scale', 'auto'], 
-              'kernel': ['linear', 'rbf', 'sigmoid']}  
+              'kernel': ['linear', 'rbf']}  
    
 grid = GridSearchCV(svc, param_grid, refit = True, verbose = 3,n_jobs=-1) 
 grid.fit(X_train, y_train) 
 grid_predictions = grid.predict(X_test) 
-svc2 = SVC(C=100, gamma='scale', kernel='rbf')
+svc2 = SVC(C=grid.best_estimator_.C, gamma=grid.best_estimator_.gamma, kernel=grid.best_estimator_.kernel)
 svc2.fit(X_train, y_train)
 # Accuaracy for post GridSearchCV classifier
 svc_acc2 = accuracy_score(y_test, svc2.predict(X_test))
