@@ -58,8 +58,8 @@ plt.grid_search(grid.cv_results_, change='n_neighbours', kind='line')
 start_time = time.time()
 svc = SVC()
 svc.fit(X_train, y_train)
-param_grid = {'C': [80, 100, 130, 1000],  
-              'gamma': [1, 0.1, 0.01, 10, 100], 
+param_grid = {'C': [0.1, 1, 10, 100, 1000],  
+              'gamma': [100, 10, 1, 0.1, 0.01], 
               'kernel': ['linear', 'rbf', 'sigmoid', 'poly']}  
    
 grid = GridSearchCV(svc, param_grid, refit = True, verbose = 3,n_jobs=-1) 
