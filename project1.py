@@ -129,7 +129,7 @@ acc_dict["RF"] = [rf_acc1, rf_acc2]
 
 # AdaBoost Classifier
 start_time = time.time()
-ada1 = AdaBoostClassifier(base_estimator = dt)
+ada1 = AdaBoostClassifier(base_estimator = rf2)
 ada1.fit(X_train, y_train)
 # Accuaracy for pre GridSearchCV classifier
 ada_acc1 = accuracy_score(y_test, ada1.predict(X_test))
